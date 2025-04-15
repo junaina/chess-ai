@@ -63,6 +63,8 @@ def is_legal_move(board,piece,start,end):
     return False
 
 def is_pawn_move_legal(board,piece,start,end):
+    if start == end:
+        return False
     sr,sc=start
     er,ec=end
     direction=-1 if piece[0]=='w' else 1# white moves up, black down
@@ -82,6 +84,8 @@ def is_pawn_move_legal(board,piece,start,end):
     return False
 
 def is_knight_move_legal(board,piece,start,end):
+    if start == end:
+        return False
     sr,sc=start
     er,ec=end
     dr,dc=abs(er-sr),abs(ec-sc)
@@ -93,6 +97,8 @@ def is_knight_move_legal(board,piece,start,end):
     return target=="  " or target[0]!=piece[0]
 
 def is_rook_move_legal(board,piece,start,end):
+    if start == end:
+        return False
     sr,sc=start
     er,ec=end
     # move straight rule
@@ -112,6 +118,8 @@ def is_rook_move_legal(board,piece,start,end):
     return target=="  "or target[0]!=piece[0]
 
 def is_bishop_move_legal(board,piece,start,end):
+    if start == end:
+        return False
     sr,sc=start
     er,ec=end
     dr,dc=abs(er-sr),abs(ec-sc)
@@ -138,6 +146,8 @@ def is_queen_move_legal(board, piece, start, end):
     return is_rook_move_legal(board,piece,start,end) or is_bishop_move_legal(board,piece,start,end)
 
 def is_king_move_legal(board, piece, start, end):
+    if start == end:
+        return False
     sr,sc=start
     er,ec=end
 
@@ -188,13 +198,13 @@ def make_move(board, start, end, current_player):
     #test run to see if move puts own king in check
     captured_piece = board[er][ec]
 
-    board[er][ec] = piece
-    board[sr][sc] = "  "
+    board[er][ec]=piece
+    board[sr][sc]="  "
     if check_check(board, current_player):
-        print("don't move into a check sweetheart🥰🧠")
+        print("you're still in check sweetheart🥰🧠")
         #rolling bak
-        board[sr][sc] = piece
-        board[er][ec] = captured_piece
+        board[sr][sc]=piece
+        board[er][ec]=captured_piece
         return False
     return True
 
@@ -203,7 +213,35 @@ def make_move(board, start, end, current_player):
 # Has no legal moves
 # AND is in check means checkmate
 # AND NOT in check means stalemate
-
+def checkmate_or_stalemate( board,player_color):
+    for r in range(8):
+        for c in range(8):
+            piece=board[r][c]
+            if piece=="  " or piece[0]!=player_color:
+                continue
+            for er in range(8):
+                for ec in range(8):
+                    start=(r, c)
+                    end=(er, ec)
+                    if not is_legal_move(board, piece,start,end):
+                        continue
+###################simulating move################
+                    captured=board[er][ec]
+                    board[er][ec]=piece
+                    board[r][c]="  "
+                    #if i can manage to get atleast one move, checkmate's in the clear
+                    if not check_check(board,player_color):
+                        board[r][c]=piece
+                        board[er][ec]=captured
+                        return None
+                    #reset
+                    board[r][c]=piece
+                    board[er][ec]=captured
+    #gets check at every possibemove
+    if check_check(board,player_color):
+        return "checkmate"
+    else:
+        return "stalemate"
 
 #game loop
 def play_game():
@@ -218,8 +256,20 @@ def play_game():
             continue
         moved=make_move(board,start,end,current_player)
         if moved:
-            current_player='b' if current_player=='w' else 'w'
+
+            current_player = 'b' if current_player == 'w' else 'w'
+            state = checkmate_or_stalemate(board, current_player)
+            if state=="checkmate":
+                print_board(board)
+                print(f"{Fore.RED}💀 checkmate! {'White' if current_player == 'w' else 'Black'} loses.{Style.RESET_ALL}")
+                break
+            elif state=="stalemate":
+                print_board(board)
+                print(f"{Fore.YELLOW} aha stalemate! looks like you couldn't lose fully either{Style.RESET_ALL}")
+                break
+
             if check_check(board,current_player):
-              print(f"{Fore.RED}⚠️ {'White' if current_player=='w' else 'Black'} is in check!{Style.RESET_ALL}")
+                print(f"{Fore.RED}⚠️{'player white' if current_player=='w' else 'player black'} is in check!{Style.RESET_ALL}")
+
 
 play_game();
