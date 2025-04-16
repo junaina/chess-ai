@@ -1,9 +1,6 @@
 from colorama import Fore, Style, init
 init(autoreset=True)  # Automatically reset color after each print
-import time
 
-
-AI_PLAYER = 'b'  #ai kala. bridging the gap between races:)
 # 8x8 board, each cell is a string: "wP" for white pawn, "bK" for black king, etc.
 def create_initial_board():
     return [
@@ -213,7 +210,7 @@ def check_check(board, player_color):
     return False#unchecked
 
 #getting all movs
-def get_all_moves(board, player, only_captures=False):
+def get_all_moves(board, player):
     all_moves=[]
     for r in range(8):
         for c in range(8):
@@ -232,11 +229,7 @@ def get_all_moves(board, player, only_captures=False):
                     board[r][c]="  "
 
                     if not check_check(board,player):
-                        if only_captures:
-                            if taken.strip()!="" and taken[0]!=player:
-                                all_moves.append((start,end))
-                        else:
-                                 all_moves.append((start,end))
+                        all_moves.append((start,end))
                     #rolling back
                     board[r][c]=piece
                     board[target_row][target_col]=taken
@@ -317,16 +310,9 @@ def minimax(board,depth,alpha,beta,maxing,ai_side):
     
     if status=="stalemate" or depth==0:
         return evaluate_board(board,ai_side), None
+    
     #evaluating possible options
-    #the idea: u see a capture, go bloodhound crazy after it
-    capture_moves=get_all_moves(board,turn,only_captures=True)
-    non_capture_moves=get_all_moves(board, turn, only_captures=False)
-    #getting rid of dupes here
-    non_capture_moves=[m for m in non_capture_moves if m not in capture_moves]
-
-    #explore capturable moves first
-    possible_moves=capture_moves+non_capture_moves
-
+    possible_moves=get_all_moves(board,turn)
     best_move=None
     if maxing:
         max_score=-float('inf')
@@ -345,6 +331,7 @@ def minimax(board,depth,alpha,beta,maxing,ai_side):
             alpha=max(alpha,max_score)
             if beta<=alpha:
                 break#pointless to check further
+
         return max_score,best_move
     else:
         min_score=float('inf')
@@ -363,48 +350,36 @@ def minimax(board,depth,alpha,beta,maxing,ai_side):
             beta=min(beta,min_score)
             if beta<=alpha:
                 break
+
         return min_score,best_move
+
 #game loop
 def play_game():
     board=create_initial_board()
     current_player='w'
-    ai_side='b'
     while True:
         print_board(board)
-        if current_player == ai_side:
-            print(f"{Fore.YELLOW}AI ({'Black' if ai_side == 'b' else 'White'})'s turn...{Style.RESET_ALL}")
-            start_time = time.time()
-            _,ai_move = minimax(board, depth=5, alpha=-float('inf'), beta=float('inf'), maxing=True, ai_side=ai_side)
-            end_time = time.time()
-            if end_time - start_time > 5:
-                print(f"{Fore.CYAN}y'know, it does take a while to think six moves ahead. jeez.{Style.RESET_ALL}")
-            if ai_move:
-                start, end= ai_move
-                move_str =f"{chr(start[1]+97)}{8-start[0]} to {chr(end[1]+97)}{8-end[0]}"
-                print(f"AI moves:{move_str}")
-                make_move(board,start,end,current_player)
-            else:
-                print("ai gave up. no moves left🏳️")
+        move_str=input(f"{Fore.GREEN}{'White' if current_player=='w' else 'Black'}'s move (enter source to destination e.g.,e2 e4):{Style.RESET_ALL}")
+        start,end=parse_move_input(move_str)
+        if start is None or end is None:
+            print("❌invalid move. have another go(example:e2 e4).")
+            continue
+        moved=make_move(board,start,end,current_player)
+        if moved:
+
+            current_player = 'b' if current_player == 'w' else 'w'
+            state = checkmate_or_stalemate(board, current_player)
+            if state=="checkmate":
+                print_board(board)
+                print(f"{Fore.RED}💀 checkmate! {'White' if current_player == 'w' else 'Black'} loses.{Style.RESET_ALL}")
                 break
-        else:
-            move_str=input(f"{Fore.GREEN}{'white' if current_player=='w' else 'black'}'s move:{Style.RESET_ALL}")
-            start,end=parse_move_input(move_str)
-            if start is None or end is None:
-                print("❌ invalid move.")
-                continue
-            moved =make_move(board,start,end,current_player)
-            if not moved:
-                continue  # retry
-        current_player='b' if current_player=='w' else 'w'
-        state =checkmate_or_stalemate(board, current_player)
-        if state=="checkmate":
-            print_board(board)
-            print(f"{Fore.RED}checkmate sucker! {'White' if current_player == 'w' else 'Black'} loses.{Style.RESET_ALL}")
-            break
-        elif state == "stalemate":
-            print_board(board)
-            print(f"{Fore.YELLOW}🤝 stalemate! why look at that! you couldn't even lose fully{Style.RESET_ALL}")
-            break
-        if check_check(board, current_player):
-            print(f"{Fore.RED}⚠️ {'White' if current_player == 'w' else 'Black'} is in check!{Style.RESET_ALL}")
+            elif state=="stalemate":
+                print_board(board)
+                print(f"{Fore.YELLOW} aha stalemate! looks like you couldn't lose fully either{Style.RESET_ALL}")
+                break
+
+            if check_check(board,current_player):
+                print(f"{Fore.RED}⚠️{'player white' if current_player=='w' else 'player black'} is in check!{Style.RESET_ALL}")
+
+
 play_game();
